@@ -129,32 +129,26 @@ func is_final() -> bool:
 
 
 func ai_params() -> Dictionary:
-	var d := 2
-	var b := 0.12
-	match act:
-		1:
-			d = 2
-			b = 0.12
-		2:
-			d = 3
-			b = 0.1
-		3:
-			d = 3
-			b = 0.06
-		4, 5:
-			d = 4
-			b = 0.04
-		6, 7:
-			d = 4
-			b = 0.02
-		_:
-			d = 4
-			b = 0.0
+	# [profundidad máxima, milisegundos para pensar, prob. de error]
+	var table := [[3, 250, 0.10], [4, 350, 0.06], [5, 450, 0.04], [5, 550, 0.02],
+		[6, 650, 0.02], [6, 800, 0.0], [7, 900, 0.0], [8, 1100, 0.0]]
+	var row: Array = table[clampi(act, 1, 8) - 1]
+	var d: int = row[0]
+	var ms: float = row[1]
+	var b: float = row[2]
+	var aggr := 1.0
+	if stage == 1:
+		aggr = 1.2
 	if stage == 2:
-		b *= 0.5
+		# Jefe: piensa más, más hondo, sin regalar nada y al ataque.
+		d += 1
+		ms *= 1.4
+		b = 0.0
+		aggr = 1.3 if current_boss() == "gran_maestro" else 1.5
+	ms *= 1.0 + 0.3 * corona
 	if corona >= 1:
 		b *= 0.5
-	return {"depth": d, "blunder": b}
+	return {"depth": d, "time": int(ms), "blunder": b, "aggr": aggr}
 
 
 func board_mods() -> Dictionary:

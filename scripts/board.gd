@@ -31,6 +31,32 @@ var ids := PackedInt32Array()
 var mods := {}
 ## id de pieza -> turnos congelada.
 var frozen := {}
+## Huella Zobrist de la posición (para la memoria de la IA).
+var hash := 0
+static var Z := PackedInt64Array()
+
+
+static func _zinit() -> void:
+	if not Z.is_empty():
+		return
+	var r := RandomNumberGenerator.new()
+	r.seed = 20261118
+	Z.resize(64 * 16 + 1)
+	for i in Z.size():
+		Z[i] = (r.randi() << 32) ^ r.randi()
+
+
+static func zside() -> int:
+	_zinit()
+	return Z[64 * 16]
+
+
+func compute_hash() -> void:
+	_zinit()
+	hash = 0
+	for i in cells.size():
+		if cells[i] > 0:
+			hash ^= Z[i * 16 + cells[i]]
 
 
 func setup(width: int, height: int) -> void:
@@ -50,6 +76,7 @@ func clone() -> Board:
 	b.ids = ids.duplicate()
 	b.mods = mods.duplicate()
 	b.frozen = frozen.duplicate()
+	b.compute_hash()
 	return b
 
 
@@ -269,6 +296,7 @@ func make(m: Vector2i) -> Array:
 	var cap := cells[t]
 	var mid := ids[f]
 	var cid := ids[t]
+	var old_hash := hash
 	cells[t] = mv
 	ids[t] = mid
 	cells[f] = 0
@@ -281,7 +309,11 @@ func make(m: Vector2i) -> Array:
 		if (side == 0 and ty <= line) or (side == 1 and ty >= h - 1):
 			cells[t] = Q + side * 8
 			promo = true
-	return [f, t, mv, cap, mid, cid, promo]
+	if not Z.is_empty():
+		hash ^= Z[f * 16 + mv] ^ Z[t * 16 + cells[t]]
+		if cap > 0:
+			hash ^= Z[t * 16 + cap]
+	return [f, t, mv, cap, mid, cid, promo, old_hash]
 
 
 func unmake(u: Array) -> void:
@@ -289,3 +321,4 @@ func unmake(u: Array) -> void:
 	ids[u[0]] = u[4]
 	cells[u[1]] = u[3]
 	ids[u[1]] = u[5]
+	hash = u[7]

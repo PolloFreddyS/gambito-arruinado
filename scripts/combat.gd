@@ -142,10 +142,13 @@ func _setup_board() -> void:
 	ai = ChessAI.new()
 	var p := Run.ai_params()
 	ai.depth = p["depth"]
+	ai.time_ms = p["time"]
 	ai.blunder = p["blunder"]
+	ai.aggression = p["aggr"]
 	ai.me = 1
 	bot = ChessAI.new()
 	bot.depth = 2
+	bot.time_ms = 200
 	bot.blunder = 0.1
 	bot.me = 0
 	bot.own_weight = 0.5
