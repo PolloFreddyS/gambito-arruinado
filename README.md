@@ -34,12 +34,14 @@ Roguelike de ajedrez con meta de puntos, reliquias, jefes y demasiadas explosion
 | `scripts/sfx.gd` | Sonidos sintetizados (autoload `Sfx`) |
 | `scripts/screens/` | Título, mapa, tienda y final |
 
-## Versión web (Vercel)
+## Versión web (GitHub Pages)
 
-Cada push a `main` corre `.github/workflows/web.yml`: baja Godot 4.7.2 y las plantillas web en la nube,
-exporta el juego (sin hilos, para hosting estático) y lo sube a la rama `web`.
-Vercel está conectado al repo y publica la rama `web` como sitio estático. `vercel.json` en `main`
-desactiva los despliegues de `main` (ahí está el código, no el juego).
+Juega en: https://pollofreddys.github.io/gambito-arruinado/
+Descarga para Windows: https://pollofreddys.github.io/gambito-arruinado/descargar.html
+
+Cada push a `main` corre `.github/workflows/web.yml`: baja Godot 4.7.2 y las plantillas en la nube,
+exporta la versión web (sin hilos, para hosting estático) y un `.exe` de Windows, y lo sube todo a la
+rama `web`. GitHub Pages publica esa rama.
 
 ## Pruebas (sin ventana)
 

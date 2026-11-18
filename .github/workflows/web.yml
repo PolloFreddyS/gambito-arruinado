@@ -77,6 +77,8 @@ jobs:
           set -e
           cp web/vercel.json build/web/vercel.json
           cp web/descargar.html build/web/descargar.html
+          touch build/web/.nojekyll
+          rm -f build/web/*.import
           cd build/web
           git init -q -b web
           git config user.name "github-actions[bot]"
