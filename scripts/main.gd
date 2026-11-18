@@ -72,6 +72,9 @@ func _route_args() -> void:
 		Run.speed = float(_arg("--speed=", "6"))
 		Engine.time_scale = Run.speed
 		Run.new_run(int(_arg("--corona=", "0")))
+		Run.act = int(_arg("--act=", "1"))
+		Run.stage = int(_arg("--stage=", "0"))
+		Run.test_easy = "--easy" in args
 		show_map()
 		return
 	if "--demo" in args:
@@ -164,7 +167,15 @@ func new_run(corona: int) -> void:
 	show_map()
 
 
+func continue_run() -> void:
+	if Run.load_run():
+		show_map()
+	else:
+		show_title()
+
+
 func show_map() -> void:
+	Run.save_run()
 	set_mood("boss" if Run.stage == 2 else "normal")
 	_set_screen(MapScreen.new())
 
@@ -180,6 +191,7 @@ func after_win() -> void:
 		show_end(true)
 		return
 	Run.advance()
+	Run.save_run()
 	show_shop()
 
 

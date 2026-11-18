@@ -48,6 +48,9 @@ func _ready() -> void:
 	b.pressed.connect(func(): main.show_title())
 	add_child(b)
 	Sfx.play("fanfare")
+	if Run.demo:
+		print("AUTO: FIN victoria=%s" % str(victory))
+		get_tree().create_timer(2.0).timeout.connect(func(): get_tree().quit())
 	var x := 200.0
 	for k in [Board.P, Board.N, Board.B, Board.R, Board.Q, Board.K]:
 		var pv := PieceView.new()

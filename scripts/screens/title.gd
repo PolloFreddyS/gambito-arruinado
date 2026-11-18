@@ -32,6 +32,10 @@ func _ready() -> void:
 	col.position = Vector2(490, 368)
 	col.custom_minimum_size = Vector2(300, 0)
 	root.add_child(col)
+	if Run.has_saved_run():
+		var cont := UI.button("CONTINUAR · %s" % Run.saved_run_label(), UI.GREEN, 26)
+		cont.pressed.connect(func(): main.continue_run())
+		col.add_child(cont)
 	var play := UI.button("NUEVA PARTIDA", UI.GOLD, 30)
 	play.pressed.connect(func(): main.new_run(corona))
 	col.add_child(play)

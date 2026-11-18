@@ -2,7 +2,7 @@ extends Node
 ## Estado de la partida actual (autoload "Run") y progreso guardado.
 
 const SAVE_PATH := "user://meta.cfg"
-const TARGETS: Array[int] = [100, 180, 260, 380, 520, 700, 950, 1300]
+const TARGETS: Array[int] = [200, 280, 650, 950, 1150, 1700, 2300, 3100]
 const STAGE_MULT: Array[float] = [1.0, 1.35, 1.7]
 const MAX_RELICS := 5
 const MAX_SCROLLS := 2
@@ -22,6 +22,8 @@ var stats := {"captures": 0, "best_hit": 0, "combats": 0, "score": 0}
 var demo := false
 ## Velocidad del juego (el piloto automático de pruebas la sube).
 var speed := 1.0
+## Solo pruebas: metas mínimas para recorrer todos los actos.
+var test_easy := false
 var meta := {"best_act": 0, "corona_max": 0, "wins": 0, "runs": 0}
 var rng := RandomNumberGenerator.new()
 
@@ -94,11 +96,15 @@ func army_cap() -> int:
 
 
 func target() -> int:
+	if test_easy:
+		return 10
 	var t := TARGETS[act - 1] * STAGE_MULT[stage] * (1.0 + 0.25 * corona)
 	return int(round(t / 10.0)) * 10
 
 
 func moves_allowed() -> int:
+	if test_easy:
+		return 60
 	var m := 10 + (board_size() - 6) * 2
 	if has_relic("reloj_arena"):
 		m += 2
@@ -118,31 +124,31 @@ func is_final() -> bool:
 
 
 func ai_params() -> Dictionary:
-	var d := 1
-	var b := 0.35
+	var d := 2
+	var b := 0.12
 	match act:
 		1:
-			d = 1
-			b = 0.35
+			d = 2
+			b = 0.12
 		2:
-			d = 2
-			b = 0.3
-		3:
-			d = 2
-			b = 0.2
-		4, 5:
-			d = 2
+			d = 3
 			b = 0.1
+		3:
+			d = 3
+			b = 0.06
+		4, 5:
+			d = 4
+			b = 0.04
 		6, 7:
-			d = 3
-			b = 0.08
+			d = 4
+			b = 0.02
 		_:
-			d = 3
+			d = 4
 			b = 0.0
 	if stage == 2:
-		b *= 0.6
+		b *= 0.5
 	if corona >= 1:
-		b *= 0.6
+		b *= 0.5
 	return {"depth": d, "blunder": b}
 
 
@@ -324,6 +330,7 @@ func advance() -> void:
 
 
 func record_victory() -> void:
+	clear_run()
 	meta["wins"] = int(meta["wins"]) + 1
 	meta["corona_max"] = maxi(int(meta["corona_max"]), mini(3, corona + 1))
 	meta["best_act"] = 8
@@ -331,6 +338,7 @@ func record_victory() -> void:
 
 
 func record_loss() -> void:
+	clear_run()
 	meta["best_act"] = maxi(int(meta["best_act"]), act)
 	save_meta()
 
@@ -359,6 +367,64 @@ func shop_offers() -> Array:
 	var e: String = ek[rng.randi() % ek.size()]
 	offers.append({"kind": "enchant", "id": e, "price": price(GameData.ENCHANTS[e]["price"])})
 	return offers
+
+
+# ------------------------------------------------------------ partida guardada
+# Se guarda al llegar al mapa (antes de cada combate). Si la página se recarga
+# o el juego se cierra, el título ofrece CONTINUAR desde ese combate.
+
+const RUN_PATH := "user://run.cfg"
+
+
+func save_run() -> void:
+	if demo or not OS.get_cmdline_user_args().is_empty():
+		return
+	var cf := ConfigFile.new()
+	cf.set_value("run", "gold", gold)
+	cf.set_value("run", "act", act)
+	cf.set_value("run", "stage", stage)
+	cf.set_value("run", "corona", corona)
+	cf.set_value("run", "army", army)
+	cf.set_value("run", "relics", Array(relics))
+	cf.set_value("run", "scrolls", Array(scrolls))
+	cf.set_value("run", "bosses", Array(bosses))
+	cf.set_value("run", "stats", stats)
+	cf.save(RUN_PATH)
+
+
+func has_saved_run() -> bool:
+	return FileAccess.file_exists(RUN_PATH)
+
+
+func saved_run_label() -> String:
+	var cf := ConfigFile.new()
+	if cf.load(RUN_PATH) != OK:
+		return ""
+	return "Acto %d · %s" % [int(cf.get_value("run", "act", 1)), GameData.STAGE_NAMES[int(cf.get_value("run", "stage", 0))]]
+
+
+func load_run() -> bool:
+	var cf := ConfigFile.new()
+	if cf.load(RUN_PATH) != OK:
+		return false
+	gold = int(cf.get_value("run", "gold", 4))
+	act = clampi(int(cf.get_value("run", "act", 1)), 1, 8)
+	stage = clampi(int(cf.get_value("run", "stage", 0)), 0, 2)
+	corona = int(cf.get_value("run", "corona", 0))
+	army = cf.get_value("run", "army", [])
+	relics.assign(cf.get_value("run", "relics", []))
+	scrolls.assign(cf.get_value("run", "scrolls", []))
+	bosses.assign(cf.get_value("run", "bosses", []))
+	stats = cf.get_value("run", "stats", stats)
+	if army.is_empty() or bosses.size() < 8:
+		clear_run()
+		return false
+	return true
+
+
+func clear_run() -> void:
+	if FileAccess.file_exists(RUN_PATH):
+		DirAccess.remove_absolute(RUN_PATH)
 
 
 func load_meta() -> void:

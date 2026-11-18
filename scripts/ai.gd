@@ -8,11 +8,13 @@ const WIN := 100000.0
 
 var depth := 2
 var blunder := 0.2
+## Jugadas de capturas extra al final de la búsqueda (evita dejar piezas colgando).
+var qdepth := 4
 ## Lado dueño de esta IA y cuánto le importan sus propias piezas
 ## (menos de 1 = más agresiva, cambia piezas con gusto).
 var me := 1
 var own_weight := 1.0
-var node_cap := 40000
+var node_cap := 60000
 var nodes := 0
 var rng := RandomNumberGenerator.new()
 
@@ -30,10 +32,14 @@ func choose(b: Board, side: int) -> Vector2i:
 			return m
 	nodes = 0
 	var scored: Array = []
+	var best := -INF
 	for m in moves:
 		var u := b.make(m)
-		var s := -_negamax(b, depth - 1, -INF, INF, 1 - side)
+		# Ventana: las jugadas cercanas a la mejor reciben nota exacta
+		# (para elegir "errores" creíbles); las malas solo una cota.
+		var s := -_negamax(b, depth - 1, -INF, -(best - 150.0), 1 - side)
 		b.unmake(u)
+		best = maxf(best, s)
 		scored.append([s + rng.randf() * 12.0, m])
 	scored.sort_custom(func(a, c): return a[0] > c[0])
 	if scored.size() > 1 and rng.randf() < blunder:
@@ -46,8 +52,10 @@ func choose(b: Board, side: int) -> Vector2i:
 
 func _negamax(b: Board, d: int, alpha: float, beta: float, side: int) -> float:
 	nodes += 1
-	if d <= 0 or nodes > node_cap:
+	if nodes > node_cap:
 		return evaluate(b, side)
+	if d <= 0:
+		return _quiesce(b, alpha, beta, side, qdepth)
 	var moves := _ordered(b, side)
 	if moves.is_empty():
 		return evaluate(b, side)
@@ -66,6 +74,32 @@ func _negamax(b: Board, d: int, alpha: float, beta: float, side: int) -> float:
 		if alpha >= beta:
 			break
 	return best
+
+
+## Sigue mirando solo capturas hasta que la posición esté "tranquila".
+func _quiesce(b: Board, alpha: float, beta: float, side: int, qd: int) -> float:
+	nodes += 1
+	var stand := evaluate(b, side)
+	if qd <= 0 or nodes > node_cap:
+		return stand
+	if stand >= beta:
+		return stand
+	if stand > alpha:
+		alpha = stand
+	var caps := b.gen_moves(side, true)
+	if caps.size() > 1:
+		caps.sort_custom(func(a: Vector2i, c: Vector2i): return (b.cells[a.y] & 7) > (b.cells[c.y] & 7))
+	for m in caps:
+		if (b.cells[m.y] & 7) == Board.K:
+			return WIN
+		var u := b.make(m)
+		var s := -_quiesce(b, -beta, -alpha, 1 - side, qd - 1)
+		b.unmake(u)
+		if s >= beta:
+			return s
+		if s > alpha:
+			alpha = s
+	return alpha
 
 
 func _ordered(b: Board, side: int) -> Array[Vector2i]:

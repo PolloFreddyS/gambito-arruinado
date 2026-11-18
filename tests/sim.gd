@@ -69,7 +69,7 @@ func _full_board(w: int) -> Board:
 func _test_ai_speed() -> void:
 	print("== velocidad IA ==")
 	for w in [6, 7, 8]:
-		for d in [1, 2, 3]:
+		for d in [3, 4]:
 			var b := _full_board(w)
 			var ai := ChessAI.new()
 			ai.depth = d
@@ -93,7 +93,7 @@ func _calibrate() -> void:
 			var scores: Array[int] = []
 			var wins := 0
 			var kings := 0
-			var games := 10
+			var games := 6
 			for g in games:
 				var r := _play(run)
 				scores.append(r[0])
@@ -124,7 +124,7 @@ func _play(run: Node) -> Array:
 	bot.own_weight = 0.45
 	var enemy := ChessAI.new()
 	var p: Dictionary = run.ai_params()
-	enemy.depth = mini(p["depth"], 2)
+	enemy.depth = p["depth"]
 	enemy.blunder = p["blunder"]
 	var score := 0
 	var streak := 0
@@ -145,8 +145,9 @@ func _play(run: Node) -> Array:
 			streak = 0
 		if b.count_non_king(1) < 2:
 			var free: Array[int] = []
+			var att := b.attack_mask(0)
 			for i in w * 2:
-				if b.cells[i] == 0:
+				if b.cells[i] == 0 and att[i] == 0:
 					free.append(i)
 			free.shuffle()
 			for k in mini(2, free.size()):

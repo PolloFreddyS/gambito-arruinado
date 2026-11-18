@@ -45,6 +45,8 @@ var promoted := {}
 var lost_forever := {}
 var hover := -1
 var demo_running := false
+var reinforce_waves := 0
+const MAX_WAVES := 2
 var bot: ChessAI
 
 var sb_frame: StyleBoxFlat
@@ -925,12 +927,25 @@ func _shatter(id: int, sq: int) -> void:
 
 # ================================================================== refuerzos
 
-func _reinforce() -> void:
+## Casillas vacías de las filas enemigas que el jugador NO ataca
+## (así no se pueden "cosechar" refuerzos con una torre estacionada).
+func _safe_spawns() -> Array[int]:
+	var att := board.attack_mask(0)
 	var free: Array[int] = []
 	for i in board.w * 2:
-		if board.cells[i] == 0:
+		if board.cells[i] == 0 and att[i] == 0:
 			free.append(i)
 	free.shuffle()
+	return free
+
+
+func _reinforce() -> void:
+	if reinforce_waves >= MAX_WAVES:
+		return
+	var free := _safe_spawns()
+	if free.is_empty():
+		return
+	reinforce_waves += 1
 	var n := mini(free.size(), 2 + Run.act / 3)
 	if n <= 0:
 		return
@@ -1089,10 +1104,7 @@ func _erupt() -> void:
 
 
 func _respawn_rook() -> void:
-	var free: Array[int] = []
-	for i in board.w * 2:
-		if board.cells[i] == 0:
-			free.append(i)
+	var free := _safe_spawns()
 	if free.is_empty():
 		return
 	fx.burst(Vector2(640, 260), "¡VOLVÍ!", UI.PINK, 42, true, UI.DARK, 0.4)
@@ -1292,6 +1304,8 @@ func _lose(reason: String) -> void:
 		return
 	ended = true
 	busy = true
+	# Se borra la partida guardada de inmediato: recargar la página no salva la derrota.
+	Run.record_loss()
 	Sfx.play("sad")
 	main.flash(Color(1, 0.1, 0.2, 0.5), 0.5)
 	fx.shake(1.0)
@@ -1306,7 +1320,6 @@ func _lose(reason: String) -> void:
 			pv.visible = true
 			pv.set_happy(20.0)
 	await _wait(1.8)
-	Run.record_loss()
 	var pop := _popup(UI.BOSS)
 	var v: VBoxContainer = pop.get_child(0)
 	v.add_child(UI.label("¡GAMBITO ARRUINADO!", 38, UI.PINK, 12))
