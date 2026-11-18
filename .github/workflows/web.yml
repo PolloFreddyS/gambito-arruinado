@@ -1,0 +1,73 @@
+name: Version web
+
+# Exporta el juego para navegador y lo deja en la rama "web".
+# Vercel publica esa rama tal cual (sitio estático, sin compilar nada).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: web-build
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: 4.7.2
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache de Godot y plantillas web
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot-bin
+            ~/.local/share/godot/export_templates
+          key: godot-${{ env.GODOT_VERSION }}-web-nothreads
+
+      - name: Descargar Godot y plantillas web
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          set -e
+          base=https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable
+          mkdir -p ~/godot-bin
+          curl -sSL -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip -d ~/godot-bin
+          curl -sSL -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          unzip -q templates.tpz 'templates/web_nothreads_*' 'templates/version.txt'
+          dest=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          mkdir -p "$dest"
+          mv templates/* "$dest/"
+          rm -f godot.zip templates.tpz
+
+      - name: Exportar version web
+        run: |
+          set -e
+          G=~/godot-bin/Godot_v${GODOT_VERSION}-stable_linux.x86_64
+          chmod +x "$G"
+          mkdir -p build/web
+          "$G" --headless --path . --import || true
+          "$G" --headless --path . --export-release "Web" build/web/index.html
+          ls -la build/web
+          test -f build/web/index.html
+          test -f build/web/index.wasm
+
+      - name: Publicar en la rama web
+        run: |
+          set -e
+          cp web/vercel.json build/web/vercel.json
+          cd build/web
+          git init -q -b web
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Version web de ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" web
