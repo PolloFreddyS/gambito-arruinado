@@ -3,17 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
 <title>Gambito Arruinado</title>
 <style>
   :root { --bg:#2b1c40; --card:#3f2c5c; --ink:#fff6e0; --muted:#c9b6ef; --gold:#ffd23f; --dark:#1a1028; }
   * { box-sizing: border-box; }
   body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--bg); color:var(--ink); font-family:"Arial Black", "Segoe UI", sans-serif; padding:16px; }
-  main { background:var(--card); border:4px solid var(--dark); border-radius:20px; box-shadow:0 8px 0 var(--dark); padding:28px; max-width:520px; width:100%; text-align:center; }
+  main { background:var(--card); border:4px solid var(--dark); border-radius:20px; box-shadow:0 8px 0 var(--dark); padding:28px; max-width:560px; width:100%; text-align:center; }
   h1 { margin:0 0 6px; font-size:clamp(30px, 8vw, 44px); color:var(--gold); text-shadow:3px 4px 0 var(--dark); }
-  p { color:var(--muted); font-family:"Segoe UI", sans-serif; line-height:1.5; }
+  p, small, details { color:var(--muted); font-family:"Segoe UI", sans-serif; line-height:1.5; }
   a.btn { display:block; margin:14px 0; padding:14px; border:4px solid var(--dark); border-radius:14px; box-shadow:0 6px 0 var(--dark); background:var(--gold); color:var(--dark); text-decoration:none; font-size:20px; }
   a.btn.alt { background:#c9b6ef; }
-  small { color:var(--muted); font-family:"Segoe UI", sans-serif; }
+  details { text-align:left; margin-top:16px; font-size:13px; }
+  code { word-break:break-all; color:var(--ink); }
 </style>
 </head>
 <body>
@@ -21,8 +24,14 @@
   <h1>Gambito Arruinado</h1>
   <p>Un roguelike de ajedrez con meta de puntos, jefes y demasiadas explosiones.</p>
   <a class="btn" href="./">Jugar en el navegador</a>
-  <a class="btn alt" href="GambitoArruinado-Windows.zip">Descargar para Windows (.zip)</a>
-  <small>En Windows: descomprime y abre GambitoArruinado.exe. Si sale "Windows protegió su PC", toca "Más información" → "Ejecutar de todas formas".</small>
+  <a class="btn alt" href="GambitoArruinado-Windows.zip" download>Descargar para Windows (.zip)</a>
+  <small>Descomprime y abre GambitoArruinado.exe. Si sale "Windows protegió su PC": "Más información" → "Ejecutar de todas formas" (el juego no está firmado).</small>
+  <details>
+    <summary>Comprobar que la descarga es la original</summary>
+    <p>Versión __COMMIT__. Huellas SHA-256 (en PowerShell: <code>Get-FileHash .\GambitoArruinado-Windows.zip</code>):</p>
+    <p>ZIP: <code>__ZIP_SHA256__</code></p>
+    <p>EXE: <code>__EXE_SHA256__</code></p>
+  </details>
 </main>
 </body>
 </html>

@@ -1,7 +1,13 @@
 name: Version web
 
-# Exporta el juego para navegador y lo deja en la rama "web".
-# Vercel publica esa rama tal cual (sitio estático, sin compilar nada).
+# Exporta el juego para navegador y Windows y lo deja en la rama "web",
+# que GitHub Pages publica tal cual.
+#
+# Seguridad:
+# - Solo corre en push a main o a mano (nunca en pull requests de extraños).
+# - Las acciones de terceros están fijadas a un commit exacto.
+# - Godot y sus plantillas se verifican contra el SHA512-SUMS.txt oficial.
+# - El token solo puede escribir contenido del repo (para la rama web).
 
 on:
   push:
@@ -21,68 +27,84 @@ env:
 jobs:
   export:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
-      - name: Cache de Godot y plantillas web
+      - name: Cache de Godot y plantillas
         id: cache
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: |
             ~/godot-bin
             ~/.local/share/godot/export_templates
-          key: godot-${{ env.GODOT_VERSION }}-web-windows
+          key: godot-${{ env.GODOT_VERSION }}-web-windows-verified
 
-      - name: Descargar Godot y plantillas web
+      - name: Descargar y verificar Godot y plantillas
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          set -e
+          set -euo pipefail
           base=https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable
+          bin=Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip
+          tpz=Godot_v${GODOT_VERSION}-stable_export_templates.tpz
+          curl -fsSL -o SHA512-SUMS.txt "$base/SHA512-SUMS.txt"
+          curl -fsSL -o "$bin" "$base/$bin"
+          curl -fsSL -o "$tpz" "$base/$tpz"
+          grep -E "  ($bin|$tpz)$" SHA512-SUMS.txt > wanted.txt
+          test "$(wc -l < wanted.txt)" -eq 2
+          sha512sum -c wanted.txt
           mkdir -p ~/godot-bin
-          curl -sSL -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
-          unzip -q godot.zip -d ~/godot-bin
-          curl -sSL -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
-          unzip -q templates.tpz 'templates/web_nothreads_*' 'templates/windows_release_x86_64.exe' 'templates/windows_debug_x86_64.exe' 'templates/version.txt'
+          unzip -q "$bin" -d ~/godot-bin
+          unzip -q "$tpz" 'templates/web_nothreads_*' 'templates/windows_release_x86_64.exe' 'templates/windows_debug_x86_64.exe' 'templates/version.txt'
           dest=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
           mkdir -p "$dest"
           mv templates/* "$dest/"
-          rm -f godot.zip templates.tpz
+          rm -f "$bin" "$tpz" SHA512-SUMS.txt wanted.txt
 
       - name: Exportar version web
         run: |
-          set -e
+          set -euo pipefail
           G=~/godot-bin/Godot_v${GODOT_VERSION}-stable_linux.x86_64
           chmod +x "$G"
-          mkdir -p build/web
+          mkdir -p build/web build/windows
+          touch build/.gdignore
           "$G" --headless --path . --import || true
           "$G" --headless --path . --export-release "Web" build/web/index.html
-          ls -la build/web
           test -f build/web/index.html
           test -f build/web/index.wasm
 
       - name: Exportar version Windows (.exe para descargar)
         run: |
-          set -e
+          set -euo pipefail
           G=~/godot-bin/Godot_v${GODOT_VERSION}-stable_linux.x86_64
-          mkdir -p build/windows
           "$G" --headless --path . --export-release "Windows" build/windows/GambitoArruinado.exe
-          ls -la build/windows
           test -f build/windows/GambitoArruinado.exe
           cp web/LEEME.txt build/windows/LEEME.txt
-          (cd build/windows && zip -q -9 ../web/GambitoArruinado-Windows.zip GambitoArruinado.exe LEEME.txt)
-          ls -la build/web/GambitoArruinado-Windows.zip
+          (cd build/windows && zip -q -9 -X ../web/GambitoArruinado-Windows.zip GambitoArruinado.exe LEEME.txt)
 
-      - name: Publicar en la rama web
+      - name: Preparar pagina de descarga con huellas SHA-256
         run: |
-          set -e
-          cp web/vercel.json build/web/vercel.json
-          cp web/descargar.html build/web/descargar.html
+          set -euo pipefail
+          zip_sha=$(sha256sum build/web/GambitoArruinado-Windows.zip | cut -d' ' -f1)
+          exe_sha=$(sha256sum build/windows/GambitoArruinado.exe | cut -d' ' -f1)
+          sed -e "s/__ZIP_SHA256__/$zip_sha/" -e "s/__EXE_SHA256__/$exe_sha/" -e "s/__COMMIT__/${GITHUB_SHA::7}/" \
+            web/descargar.html > build/web/descargar.html
+          printf '%s  GambitoArruinado-Windows.zip\n%s  GambitoArruinado.exe\n' "$zip_sha" "$exe_sha" > build/web/SHA256SUMS.txt
           touch build/web/.nojekyll
           rm -f build/web/*.import
+          ls -la build/web
+
+      - name: Publicar en la rama web
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
           cd build/web
           git init -q -b web
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -q -m "Version web de ${GITHUB_SHA::7}"
-          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" web
+          git push -q -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" web
