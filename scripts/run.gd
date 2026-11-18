@@ -2,7 +2,7 @@ extends Node
 ## Estado de la partida actual (autoload "Run") y progreso guardado.
 
 const SAVE_PATH := "user://meta.cfg"
-const TARGETS: Array[int] = [200, 300, 700, 1300, 1800, 2700, 3700, 5200]
+const TARGETS: Array[int] = [180, 270, 630, 1170, 1620, 2430, 3330, 4680]
 const STAGE_MULT: Array[float] = [1.0, 1.35, 1.7]
 const MAX_RELICS := 5
 const MAX_SCROLLS := 2
@@ -130,8 +130,8 @@ func is_final() -> bool:
 
 func ai_params() -> Dictionary:
 	# [profundidad máxima, milisegundos para pensar, prob. de error]
-	var table := [[3, 250, 0.10], [4, 350, 0.06], [5, 450, 0.04], [5, 550, 0.02],
-		[6, 650, 0.02], [6, 800, 0.0], [7, 900, 0.0], [8, 1100, 0.0]]
+	var table := [[3, 225, 0.11], [4, 315, 0.07], [5, 405, 0.045], [5, 495, 0.025],
+		[6, 585, 0.02], [6, 720, 0.01], [7, 810, 0.0], [8, 990, 0.0]]
 	var row: Array = table[clampi(act, 1, 8) - 1]
 	var d: int = row[0]
 	var ms: float = row[1]
