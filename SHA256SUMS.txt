@@ -1,0 +1,2 @@
+4be40b66343a97cd820c3996a3e238dded20849e41a9a1a60c202d734f6c424c  GambitoArruinado-Windows.zip
+f96f33b7673f0654d9a53fabf349cd6884fafcade32168225e57826904bdb9e5  GambitoArruinado.exe
