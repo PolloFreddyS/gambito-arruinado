@@ -1,0 +1,18 @@
+GAMBITO ARRUINADO
+=================
+
+Un roguelike de ajedrez con demasiadas explosiones.
+
+Cómo abrirlo:
+1. Descomprime este zip en cualquier carpeta.
+2. Doble clic en GambitoArruinado.exe.
+
+Si Windows muestra "Windows protegió su PC": toca "Más información" y luego
+"Ejecutar de todas formas". Sale porque el juego no está firmado (es un juego
+casero), no porque tenga nada raro.
+
+Cómo jugar:
+- Clic en tu pieza y luego en su destino. Clic derecho cancela.
+- Llega a la META de puntos antes de que se acaben las jugadas.
+- Golpe = PUNTOS × MULT. Capturar seguido sube la racha y el multiplicador.
+- Capturar al rey enemigo gana al instante.
