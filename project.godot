@@ -30,5 +30,4 @@ gdscript/warnings/narrowing_conversion=0
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
-anti_aliasing/quality/msaa_2d=2
 environment/defaults/default_clear_color=Color(0.105882, 0.0627451, 0.156863, 1)
