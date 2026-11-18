@@ -24,12 +24,14 @@ func _init() -> void:
 
 
 func choose(b: Board, side: int) -> Vector2i:
-	var moves := _ordered(b, side)
-	if moves.is_empty():
-		return Vector2i(-1, -1)
-	for m in moves:
+	var moves: Array[Vector2i] = []
+	for m in _ordered(b, side):
 		if (b.cells[m.y] & 7) == Board.K and b.cells[m.y] > 0:
 			return m
+		if b.is_legal(m):
+			moves.append(m)
+	if moves.is_empty():
+		return Vector2i(-1, -1)
 	nodes = 0
 	var scored: Array = []
 	var best := -INF

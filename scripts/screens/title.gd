@@ -161,11 +161,12 @@ func _show_help() -> void:
 		"Cada combate es una partida corta. Tienes pocas jugadas para llegar a la META de puntos.",
 		"Capturar da PUNTOS según la pieza. Capturar en turnos seguidos sube la RACHA, y la racha sube el MULT.",
 		"Puntaje del golpe = PUNTOS × MULT. Jaques y horquillas también suman.",
-		"Si capturas al rey enemigo ganas al instante. Si te capturan el rey o se acaban las jugadas: ¡ARRUINADO!",
+		"Jaque mate al rey enemigo = victoria al instante. Si te dan jaque mate o se acaban las jugadas: ¡ARRUINADO!",
 		"Las piezas que pierdes vuelven después del combate (menos el vidrio roto y los traidores).",
 		"Entre combates compras RELIQUIAS (efectos para siempre), PIEZAS, PERGAMINOS (un uso) y ENCANTAMIENTOS.",
 		"8 actos de 3 combates: Escaramuza, Batalla y un JEFE que rompe una regla. Llega al Gran Maestro y gánale.",
-		"Aquí no hay jaque obligatorio ni enroque: es ajedrez arcade.",
+		"Reglas de ajedrez de verdad: si estás en jaque tienes que resolverlo. No hay enroque ni captura al paso.",
+		"Cada combate puede traer una MALDICIÓN al azar (rayos, niebla, lava, traidores...). Míralas en el mapa.",
 	]
 	for l in lines:
 		v.add_child(UI.wrap_label("• " + l, 18, UI.CREAM, 760))

@@ -2,7 +2,7 @@ extends Node
 ## Estado de la partida actual (autoload "Run") y progreso guardado.
 
 const SAVE_PATH := "user://meta.cfg"
-const TARGETS: Array[int] = [200, 280, 650, 950, 1150, 1700, 2300, 3100]
+const TARGETS: Array[int] = [200, 300, 700, 1300, 1800, 2700, 3700, 5200]
 const STAGE_MULT: Array[float] = [1.0, 1.35, 1.7]
 const MAX_RELICS := 5
 const MAX_SCROLLS := 2
@@ -18,6 +18,9 @@ var army: Array = []
 var relics: Array[String] = []
 var scrolls: Array[String] = []
 var bosses: Array[String] = []
+## Maldición al azar de cada combate del acto actual ("" = ninguna).
+var curses: Array[String] = ["", "", ""]
+const CURSE_POOL: Array[String] = ["niebla", "torre_eterna", "plaga", "tablero_vivo", "duplicador", "cobrador", "hereje", "tormenta", "terremoto", "rey_cobarde"]
 var stats := {"captures": 0, "best_hit": 0, "combats": 0, "score": 0}
 var demo := false
 ## Velocidad del juego (el piloto automático de pruebas la sube).
@@ -42,12 +45,13 @@ func new_run(c: int) -> void:
 	scrolls.clear()
 	stats = {"captures": 0, "best_hit": 0, "combats": 0, "score": 0}
 	_starting_army()
-	var pool: Array[String] = ["niebla", "torre_eterna", "plaga", "tablero_vivo", "duplicador", "cobrador", "rey_cobarde", "hereje"]
+	var pool: Array[String] = CURSE_POOL.duplicate()
 	pool.shuffle()
 	bosses.clear()
 	for i in 7:
 		bosses.append(pool[i])
 	bosses.append("gran_maestro")
+	roll_curses()
 	meta["runs"] = int(meta["runs"]) + 1
 	save_meta()
 
@@ -105,14 +109,15 @@ func target() -> int:
 func moves_allowed() -> int:
 	if test_easy:
 		return 60
-	var m := 10 + (board_size() - 6) * 2
+	# Menos jugadas: cada movimiento cuenta.
+	var m := 9 + (board_size() - 6) * 2 - (1 if act >= 6 else 0)
 	if has_relic("reloj_arena"):
 		m += 2
 	if has_relic("contrato_maldito"):
 		m -= 3
 	if corona >= 2:
 		m -= 1
-	return maxi(4, m)
+	return maxi(5, m)
 
 
 func current_boss() -> String:
@@ -230,11 +235,12 @@ func player_layout(w: int) -> Array:
 
 
 func enemy_layout(w: int, boss_id: String) -> Array:
-	var budget := 3 + act * 3 + stage * 2 + corona
+	# El enemigo siempre tiene más material que tú, y la ventaja crece por acto.
+	var budget := 5 + act * 4 + stage * 3 + corona * 2
 	var npawns := mini(w, 2 + act / 2 + stage)
 	budget -= npawns
 	var types := []
-	if boss_id == "torre_eterna" or boss_id == "gran_maestro":
+	if boss_id == "torre_eterna" or boss_id == "gran_maestro" or current_curse() == "torre_eterna":
 		types.append(Board.R)
 		types.append(Board.R)
 		budget -= 8
@@ -320,11 +326,43 @@ func finish_combat(promoted: Dictionary, lost: Dictionary) -> void:
 	stats["combats"] = int(stats["combats"]) + 1
 
 
+## Sortea las maldiciones del acto: la Batalla siempre trae una, la
+## Escaramuza a veces desde el acto 3 y el jefe una extra desde el acto 4.
+func roll_curses() -> void:
+	var boss_id: String = bosses[act - 1] if bosses.size() >= act else ""
+	var pool: Array[String] = []
+	for c in CURSE_POOL:
+		if c != boss_id:
+			pool.append(c)
+	pool.shuffle()
+	curses = ["", "", ""]
+	if act >= 3 and rng.randf() < 0.5 + 0.05 * act:
+		curses[0] = pool[0]
+	curses[1] = pool[1]
+	if act >= 3 or corona >= 2:
+		curses[2] = pool[2]
+
+
+func current_curse() -> String:
+	return curses[stage] if stage < curses.size() else ""
+
+
+## Reglas activas del combate actual: jefe (si es jefe) + maldición.
+func current_rules() -> Array[String]:
+	var r: Array[String] = []
+	if stage == 2:
+		r.append(bosses[act - 1])
+	if current_curse() != "":
+		r.append(current_curse())
+	return r
+
+
 func advance() -> void:
 	stage += 1
 	if stage > 2:
 		stage = 0
 		act += 1
+		roll_curses()
 	meta["best_act"] = maxi(int(meta["best_act"]), act)
 	save_meta()
 
@@ -388,6 +426,7 @@ func save_run() -> void:
 	cf.set_value("run", "relics", Array(relics))
 	cf.set_value("run", "scrolls", Array(scrolls))
 	cf.set_value("run", "bosses", Array(bosses))
+	cf.set_value("run", "curses", Array(curses))
 	cf.set_value("run", "stats", stats)
 	cf.save(RUN_PATH)
 
@@ -415,6 +454,9 @@ func load_run() -> bool:
 	relics.assign(cf.get_value("run", "relics", []))
 	scrolls.assign(cf.get_value("run", "scrolls", []))
 	bosses.assign(cf.get_value("run", "bosses", []))
+	curses.assign(cf.get_value("run", "curses", ["", "", ""]))
+	if curses.size() != 3:
+		curses.assign(["", "", ""])
 	stats = cf.get_value("run", "stats", stats)
 	if army.is_empty() or bosses.size() < 8:
 		clear_run()

@@ -38,7 +38,11 @@ func _ready() -> void:
 		if is_boss:
 			var bid: String = Run.bosses[Run.act - 1]
 			v.add_child(UI.label(GameData.BOSSES[bid]["name"], 22, Color("#ffc2d1"), 8))
-			v.add_child(UI.wrap_label(GameData.BOSSES[bid]["desc"], 16, Color("#ffd6dd"), 300))
+			v.add_child(UI.wrap_label(GameData.BOSSES[bid]["desc"], 14, Color("#ffd6dd"), 300))
+		var cid: String = Run.curses[s]
+		if cid != "":
+			v.add_child(UI.label("+ MALDICIÓN: " + GameData.BOSSES[cid]["name"], 16, UI.GREEN, 6))
+			v.add_child(UI.wrap_label(GameData.BOSSES[cid]["desc"], 13, Color("#d8f5e4"), 300))
 		if s < saved_stage:
 			v.add_child(UI.label("✔ GANADO", 26, UI.GREEN, 8))
 		elif s == saved_stage:

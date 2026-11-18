@@ -48,6 +48,8 @@ const BOSSES := {
 	"cobrador": {"name": "El Cobrador", "desc": "Cada jugada sin captura te cuesta 1 de oro."},
 	"rey_cobarde": {"name": "El Rey Cobarde", "desc": "Cuando le das jaque, su rey se teletransporta lejos (cada 3 turnos)."},
 	"hereje": {"name": "El Obispo Hereje", "desc": "Las capturas en casillas oscuras valen la mitad de puntos."},
+	"tormenta": {"name": "Tormenta Eléctrica", "desc": "Cada 3 turnos caen 2 rayos sobre piezas al azar de los dos bandos (menos los reyes)."},
+	"terremoto": {"name": "Terremoto", "desc": "El tablero empieza agrietado: hay hoyos por donde nadie puede pasar."},
 	"gran_maestro": {"name": "El Gran Maestro", "desc": "Jefe final. No se equivoca, mueve doble cada 3 turnos y sus torres reviven."},
 }
 

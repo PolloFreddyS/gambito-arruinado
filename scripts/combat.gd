@@ -46,6 +46,9 @@ var lost_forever := {}
 var hover := -1
 var demo_running := false
 var reinforce_waves := 0
+var in_check_now := false
+var curse := ""
+var rules: Array[String] = []
 const MAX_WAVES := 2
 var bot: ChessAI
 
@@ -114,11 +117,23 @@ func _setup_board() -> void:
 	bview.position = Vector2(640.0 - bw / 2.0, 66.0)
 	root.add_child(bview)
 	boss = Run.current_boss()
+	curse = Run.current_curse()
+	rules = Run.current_rules()
 	for e in Run.player_layout(w):
 		board.put(e["x"], e["y"], e["t"], 0, e["id"])
 	for e in Run.enemy_layout(w, boss):
 		board.put(e["x"], e["y"], e["t"], 1, next_enemy_id)
 		next_enemy_id += 1
+	if _boss_has("terremoto"):
+		# Hoyos permanentes en las filas del medio.
+		var mid: Array[int] = []
+		for i in board.cells.size():
+			var y := i / w
+			if y >= 2 and y <= w - 3 and board.cells[i] == 0:
+				mid.append(i)
+		mid.shuffle()
+		for k in mini(mid.size(), w - 2):
+			board.cells[mid[k]] = Board.HOLE
 	for i in board.cells.size():
 		if board.cells[i] > 0:
 			_spawn_view(i)
@@ -190,6 +205,13 @@ func _build_ui() -> void:
 		hv2.add_child(UI.label(GameData.STAGE_NAMES[Run.stage].to_upper(), 26, UI.CREAM, 8))
 		head.add_child(hv2)
 	left.add_child(head)
+	if curse != "":
+		var cp := UI.panel(Color("#2e5a3a"), 12)
+		var cv2 := UI.vbox(0)
+		cv2.add_child(UI.label("MALDICIÓN: " + GameData.BOSSES[curse]["name"].to_upper(), 14, UI.GREEN, 5))
+		cv2.add_child(UI.wrap_label(GameData.BOSSES[curse]["desc"], 12, Color("#d8f5e4"), 240))
+		cp.add_child(cv2)
+		left.add_child(cp)
 
 	score_panel = UI.panel(UI.PURPLE)
 	var sv := UI.vbox(2)
@@ -301,7 +323,7 @@ func _build_ui() -> void:
 	right.add_child(sp)
 	_rebuild_scrolls()
 	var help := UI.panel(Color("#2b1e3f"))
-	help.add_child(UI.wrap_label("Clic en tu pieza y luego en su destino. Clic derecho cancela. Captura seguido para subir la racha. Captura al rey enemigo y ganas al instante.", 13, UI.LILAC, 240))
+	help.add_child(UI.wrap_label("Clic en tu pieza y luego en su destino. Clic derecho cancela. Captura seguido para subir la racha. Jaque mate al rey enemigo = victoria al instante. Si estás en jaque, tienes que resolverlo.", 13, UI.LILAC, 240))
 	right.add_child(help)
 
 	lbl_msg = UI.label("", 18, UI.CREAM, 8)
@@ -343,10 +365,16 @@ func draw_board(n: Node2D) -> void:
 		var y := i / board.w
 		var r := Rect2(x * cs, y * cs, cs, cs)
 		var col := LIGHT if (x + y) % 2 == 0 else DARKSQ
-		if boss == "hereje" and (x + y) % 2 == 1:
+		if _boss_has("hereje") and (x + y) % 2 == 1:
 			col = col.lerp(Color("#5b2a4a"), 0.35)
 		n.draw_rect(r, col)
-		if board.cells[i] == Board.HOLE:
+		if board.cells[i] == Board.HOLE and not lava.has(i):
+			# Grieta del terremoto: hoyo oscuro.
+			n.draw_rect(r.grow(-4), Color("#1a1028"))
+			n.draw_rect(r.grow(-4 - cs * 0.12), Color("#0d0814"))
+			n.draw_line(r.position + Vector2(cs * 0.2, cs * 0.15), r.position + Vector2(cs * 0.55, cs * 0.5), Color("#3f2c5c"), 3.0)
+			n.draw_line(r.position + Vector2(cs * 0.55, cs * 0.5), r.position + Vector2(cs * 0.8, cs * 0.85), Color("#3f2c5c"), 3.0)
+		elif board.cells[i] == Board.HOLE:
 			var pulse := 0.5 + 0.5 * sin(t * 6.0 + i)
 			n.draw_rect(r.grow(-3), Color("#ff4d1a").lerp(Color("#ffb21a"), pulse))
 			for k in 3:
@@ -360,6 +388,8 @@ func draw_board(n: Node2D) -> void:
 			n.draw_string(UI.font(), r.position + Vector2(cs * 0.36, cs * 0.66), "!", HORIZONTAL_ALIGNMENT_LEFT, -1, int(cs * 0.5), Color(UI.DARK, 0.8))
 		if i == sel:
 			n.draw_rect(r, Color(1, 0.82, 0.25, 0.85))
+		if in_check_now and board.cells[i] == Board.K:
+			n.draw_rect(r, Color(0.92, 0.23, 0.35, 0.45 + 0.3 * absf(sin(t * 8.0))))
 		if niebla and fog.size() == board.cells.size() and fog[i] == 0:
 			n.draw_rect(r, Color("#4a4060"))
 			for k in 3:
@@ -431,13 +461,17 @@ func _on_cell(i: int) -> void:
 			_msg("Esa pieza está congelada.")
 			return
 		sel = i
-		legal = board.moves_from(i)
+		legal = board.legal_from(i)
 		var pv := _view(i)
 		if pv:
 			pv.jump()
 		Sfx.play("pop", 1.25, -3.0)
 		if legal.is_empty():
-			_msg("Esa pieza no tiene a dónde ir.")
+			if board.in_check(0):
+				_msg("¡Estás en jaque! Esa pieza no lo resuelve.")
+				_shake_king()
+			else:
+				_msg("Esa pieza no tiene a dónde ir.")
 	else:
 		sel = -1
 		legal.clear()
@@ -491,6 +525,7 @@ func _demo_step() -> void:
 
 func _player_move(m: Vector2i) -> void:
 	busy = true
+	in_check_now = false
 	sel = -1
 	legal.clear()
 	turn_no += 1
@@ -520,6 +555,8 @@ func _player_move(m: Vector2i) -> void:
 		await _promote(m.y)
 	await _after_player_checks(m.y)
 	_update_ui()
+	if await _check_enemy_mate():
+		return
 	if await _check_end():
 		return
 	await _boss_after_player()
@@ -546,11 +583,16 @@ func _player_move(m: Vector2i) -> void:
 	_update_fog()
 	_update_moods()
 	_update_ui()
-	if board.gen_moves(0).is_empty():
-		await _lose("Te quedaste sin jugadas posibles.")
+	if board.legal_moves(0).is_empty():
+		if board.in_check(0):
+			await _lose("¡Jaque mate! Te ganaron la partida.")
+		else:
+			await _lose("Ahogado: no te queda ninguna jugada legal.")
 		return
 	busy = false
-	if moves_left == 1:
+	if board.in_check(0):
+		_warn_check()
+	elif moves_left == 1:
 		_msg("¡Última jugada!")
 	elif moves_left <= 3:
 		_msg("¡Quedan %d jugadas!" % moves_left)
@@ -729,12 +771,8 @@ func _after_player_checks(sq: int) -> void:
 		return
 	var targets := board.moves_from(sq, true)
 	var ek := board.find_king(1)
-	var gives_check := false
-	var forks := 0
-	for m in targets:
-		if m.y == ek:
-			gives_check = true
-		forks += 1
+	var gives_check := board.in_check(1)
+	var forks := targets.size()
 	if gives_check:
 		var kv := _view(ek)
 		if kv:
@@ -746,6 +784,36 @@ func _after_player_checks(sq: int) -> void:
 			await _king_flee()
 	if forks >= 2:
 		await _score_small(sq, Run.chips(Board.P) * forks, "¡HORQUILLA x%d!" % forks, UI.GREEN)
+
+
+## Jaque mate al enemigo: golpe enorme y victoria.
+func _check_enemy_mate() -> bool:
+	if ended:
+		return true
+	if not board.legal_moves(1).is_empty() or not board.in_check(1):
+		return false
+	var ek := board.find_king(1)
+	streak += 1
+	await _score_hit(ek, Run.chips(Board.K) * 2, 1.0 + streak, 1.0, "¡JAQUE MATE!")
+	await _win(true)
+	return true
+
+
+func _warn_check() -> void:
+	in_check_now = true
+	var k := board.find_king(0)
+	Sfx.play("alarm", 1.1)
+	fx.burst(_root_pos(k) + Vector2(0, -cs * 0.8), "¡JAQUE!", UI.PINK, 40, true, UI.DARK, 0.6)
+	fx.shake(0.3)
+	_msg("¡Estás en JAQUE! Mueve el rey, tápalo o captura al atacante.")
+	_shake_king()
+
+
+func _shake_king() -> void:
+	var pv := _view(board.find_king(0))
+	if pv:
+		pv.mood = "scared"
+		pv.jump()
 
 
 func _check_end() -> bool:
@@ -815,7 +883,11 @@ func _enemy_move_once() -> void:
 		m = th.wait_to_finish()
 	thinking.visible = false
 	if m.x < 0:
-		_msg("El enemigo no tiene jugadas.")
+		if board.in_check(1):
+			await _check_enemy_mate()
+		else:
+			fx.burst(Vector2(640, 300), "¡AHOGADO!", UI.LILAC, 44, true, UI.DARK, 0.5)
+			_msg("El enemigo no tiene jugadas legales: pierde el turno.")
 		return
 	var mover_id := board.ids[m.x]
 	var cap_v := board.cells[m.y]
@@ -978,9 +1050,9 @@ func _drop_enemy(i: int, t: int) -> void:
 # ================================================================== jefes
 
 func _boss_has(rule: String) -> bool:
-	if boss == rule:
+	if rules.has(rule):
 		return true
-	return boss == "gran_maestro" and (rule == "duplicador" or rule == "torre_eterna")
+	return rules.has("gran_maestro") and (rule == "duplicador" or rule == "torre_eterna")
 
 
 func _boss_after_player() -> void:
@@ -1045,6 +1117,10 @@ func _king_flee() -> void:
 func _boss_after_enemy() -> void:
 	if flee_cd > 0:
 		flee_cd -= 1
+	if _boss_has("tormenta") and enemy_turns % 3 == 2:
+		await _lightning()
+		if ended:
+			return
 	if _boss_has("tablero_vivo"):
 		for k in lava.keys():
 			lava[k] = int(lava[k]) - 1
@@ -1064,6 +1140,65 @@ func _boss_after_enemy() -> void:
 			else:
 				keep.append(t - 1)
 		rook_timers = keep
+
+
+## Tormenta: 2 rayos sobre piezas al azar de cualquier bando (menos los reyes).
+## No dan puntos; tus piezas vuelven después del combate.
+func _lightning() -> void:
+	var targets: Array[int] = []
+	for i in board.cells.size():
+		var v := board.cells[i]
+		if v > 0 and (v & 7) != Board.K:
+			targets.append(i)
+	targets.shuffle()
+	Sfx.play("alarm", 1.6, -4.0)
+	_msg("¡Se viene la tormenta!")
+	await _wait(0.35)
+	for k in mini(2, targets.size()):
+		var i := targets[k]
+		var p := _root_pos(i)
+		var bolt := Bolt.new()
+		bolt.to = p
+		bolt.from = Vector2(p.x + randf_range(-120, 120), -20)
+		fx.add_child(bolt)
+		Sfx.play("bigboom", 1.4)
+		main.flash(Color(1, 1, 0.8, 0.6), 0.15)
+		fx.shake(0.6)
+		fx.explode(p, 1.0, [Color.WHITE, UI.GOLD, UI.BLUE])
+		fx.burst(p + Vector2(0, -cs * 0.7), "¡ZAP!", UI.GOLD, 40, true, UI.BLUE, 0.4)
+		if (board.cells[i] >> 3) == 0 and streak > 0 and not Run.has_relic("racha_infinita"):
+			streak = 0
+		_destroy(i)
+		await fx.hitstop(0.08)
+		await _wait(0.3)
+	_update_ui()
+
+
+class Bolt extends Node2D:
+	var from := Vector2.ZERO
+	var to := Vector2.ZERO
+	var pts := PackedVector2Array()
+	var t := 0.0
+
+	func _ready() -> void:
+		var n := 9
+		for k in n + 1:
+			var p := from.lerp(to, float(k) / n)
+			if k > 0 and k < n:
+				p.x += randf_range(-28, 28)
+			pts.append(p)
+
+	func _process(d: float) -> void:
+		t += d
+		if t > 0.35:
+			queue_free()
+		queue_redraw()
+
+	func _draw() -> void:
+		var a := 1.0 - t / 0.35
+		draw_polyline(pts, Color(UI.DARK, a), 16.0, true)
+		draw_polyline(pts, Color(UI.GOLD, a), 10.0, true)
+		draw_polyline(pts, Color(1, 1, 1, a), 4.0, true)
 
 
 func _pick_lava() -> void:
@@ -1382,6 +1517,10 @@ func _intro() -> void:
 	else:
 		fx.burst(Vector2(640, 300), "¡A PELEAR!", UI.GOLD, 54, true, UI.RED, 0.5)
 		await _wait(0.6)
+	if curse != "":
+		Sfx.play("alarm", 0.8)
+		fx.burst(Vector2(640, 380), "MALDICIÓN: " + GameData.BOSSES[curse]["name"].to_upper(), UI.GREEN, 34, true, UI.DARK, 1.0)
+		await _wait(0.9)
 	_update_fog()
 	_update_moods()
 	busy = false

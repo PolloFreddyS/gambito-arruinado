@@ -8,9 +8,11 @@ Roguelike de ajedrez con meta de puntos, reliquias, jefes y demasiadas explosion
 - Clic en tu pieza y luego en su destino. Clic derecho cancela.
 - Cada combate: llega a la META de puntos antes de que se acaben las jugadas.
 - Golpe = PUNTOS (valor de la pieza capturada) × MULT (racha de capturas seguidas + reliquias).
-- Capturar al rey enemigo gana al instante. Si te capturan el rey o te quedas sin jugadas, pierdes la partida.
+- Jaque mate al rey enemigo gana al instante. Si te dan mate, te ahogan o te quedas sin jugadas, pierdes la partida.
 - 8 actos × 3 combates (Escaramuza, Batalla, Jefe). Entre combates hay tienda.
-- Es ajedrez "arcade": no hay jaque obligatorio, enroque, ni salto doble de peón.
+- Jaque real (no puedes dejar tu rey en jaque). No hay enroque, captura al paso ni salto doble de peón.
+- Maldiciones al azar: la Batalla siempre trae una, la Escaramuza a veces desde el acto 3, y desde el acto 3 el jefe suma una extra.
+- El enemigo siempre tiene más material que tú. Está hecho para ser muy difícil.
 
 ## Contenido
 

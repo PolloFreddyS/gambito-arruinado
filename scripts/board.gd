@@ -3,7 +3,8 @@ extends RefCounted
 ## Tablero y reglas de movimiento.
 ## Celda: 0 vacía, -1 hoyo (lava), si no: tipo + lado * 8.
 ## Lado 0 = jugador (abajo), lado 1 = enemigo (arriba).
-## Variante arcade: no hay jaque obligatorio; capturar al rey gana.
+## Jaque real: no se puede dejar el rey propio en jaque (legal_moves).
+## Sin enroque ni captura al paso.
 
 const P := 1
 const N := 2
@@ -208,6 +209,9 @@ func attack_mask(side: int) -> PackedByteArray:
 		var v := cells[i]
 		if v <= 0 or (v >> 3) != side:
 			continue
+		# Una pieza congelada no amenaza (no puede moverse para capturar).
+		if not frozen.is_empty() and frozen.has(ids[i]):
+			continue
 		if (v & 7) == P:
 			var d := -1 if side == 0 else 1
 			var x := i % w
@@ -225,6 +229,36 @@ func attack_mask(side: int) -> PackedByteArray:
 			for m in tmp:
 				mask[m.y] = 1
 	return mask
+
+
+func in_check(side: int) -> bool:
+	var k := find_king(side)
+	return k != -1 and attack_mask(1 - side)[k] == 1
+
+
+## Una jugada es legal si no deja al rey propio en jaque.
+func is_legal(m: Vector2i) -> bool:
+	var side := cells[m.x] >> 3
+	var u := make(m)
+	var ok := not in_check(side)
+	unmake(u)
+	return ok
+
+
+func legal_moves(side: int) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for m in gen_moves(side):
+		if is_legal(m):
+			out.append(m)
+	return out
+
+
+func legal_from(i: int) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for m in moves_from(i):
+		if is_legal(m):
+			out.append(m)
+	return out
 
 
 ## Ejecuta un movimiento y devuelve los datos para deshacerlo.

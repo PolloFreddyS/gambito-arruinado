@@ -74,6 +74,7 @@ func _route_args() -> void:
 		Run.new_run(int(_arg("--corona=", "0")))
 		Run.act = int(_arg("--act=", "1"))
 		Run.stage = int(_arg("--stage=", "0"))
+		Run.roll_curses()
 		Run.test_easy = "--easy" in args
 		show_map()
 		return
@@ -90,6 +91,9 @@ func _route_args() -> void:
 					Run.relics.append(r)
 			if a.begins_with("--boss="):
 				Run.bosses[Run.act - 1] = a.substr(7)
+			if a.begins_with("--curse="):
+				Run.curses = ["", "", ""]
+				Run.curses[Run.stage] = a.substr(8)
 			if a.begins_with("--scrolls="):
 				for s in a.substr(10).split(","):
 					Run.scrolls.append(s)

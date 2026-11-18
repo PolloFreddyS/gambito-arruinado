@@ -209,8 +209,8 @@ class Blast extends Node2D:
 		queue_redraw()
 
 	func _draw() -> void:
-		var k := t / DUR
-		var r := (40.0 + 120.0 * power) * ease(k, 0.25)
+		var k := clampf(t / DUR, 0.0, 0.99)
+		var r := maxf(1.0, (40.0 + 120.0 * power) * ease(k, 0.25))
 		var a := 1.0 - k
 		draw_circle(Vector2.ZERO, r, Color(outer, a * 0.9))
 		draw_circle(Vector2.ZERO, r * 0.62, Color(Color("#fff6e0"), a))
@@ -237,7 +237,7 @@ class Puff extends Node2D:
 		queue_redraw()
 
 	func _draw() -> void:
-		var k := t / life
+		var k := clampf(t / life, 0.0, 0.99)
 		var r := r0 * (1.0 + k * 1.2)
 		draw_circle(Vector2.ZERO, r + 3.0, Color(UI.DARK, col.a * (1.0 - k)))
 		draw_circle(Vector2.ZERO, r, Color(col, col.a * (1.0 - k)))
@@ -255,5 +255,5 @@ class Ring extends Node2D:
 		queue_redraw()
 
 	func _draw() -> void:
-		var k := t / 0.5
+		var k := clampf(t / 0.5, 0.0, 0.99)
 		draw_arc(Vector2.ZERO, max_r * ease(k, 0.3), 0.0, TAU, 48, Color(col, 1.0 - k), 8.0 * (1.0 - k) + 1.0, true)

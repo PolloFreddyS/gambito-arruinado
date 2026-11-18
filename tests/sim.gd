@@ -51,6 +51,42 @@ func _test_rules() -> bool:
 	ok = _check(hb.moves_from(0).size() == 1 + 5, "hoyo bloquea la torre (%d)" % hb.moves_from(0).size()) and ok
 	var m := hb.attack_mask(0)
 	ok = _check(m[1] == 1 and m[2] == 0, "máscara de ataque respeta hoyos") and ok
+	# Jaque: torre enemiga en la columna del rey; solo valen jugadas que lo resuelvan.
+	var cb := Board.new()
+	cb.setup(6, 6)
+	cb.put(3, 5, Board.K, 0, 1)
+	cb.put(0, 4, Board.P, 0, 2)
+	cb.put(1, 5, Board.N, 0, 3)
+	cb.put(3, 0, Board.R, 1, 100)
+	cb.put(5, 0, Board.K, 1, 101)
+	ok = _check(cb.in_check(0), "el rey está en jaque") and ok
+	var lm := cb.legal_moves(0)
+	var only_fix := true
+	for mv in lm:
+		var u2 := cb.make(mv)
+		if cb.in_check(0):
+			only_fix = false
+		cb.unmake(u2)
+	ok = _check(only_fix and lm.size() > 0, "en jaque solo hay jugadas que lo resuelven (%d)" % lm.size()) and ok
+	var pawn_moves := cb.legal_from(24)
+	ok = _check(pawn_moves.is_empty(), "el peón no puede ignorar el jaque") and ok
+	var knight_block := false
+	for mv in cb.legal_from(31):
+		if mv.y == 3 * 6 + 3 or mv.y == 2 * 6 + 3 or mv.y == 4 * 6 + 3:
+			knight_block = true
+	ok = _check(knight_block, "el caballo puede tapar el jaque") and ok
+	# Mate del pasillo: rey en esquina, dos torres.
+	var mb := Board.new()
+	mb.setup(6, 6)
+	mb.put(0, 5, Board.K, 0, 1)
+	mb.put(5, 5, Board.R, 1, 100)
+	mb.put(5, 4, Board.R, 1, 101)
+	mb.put(5, 0, Board.K, 1, 102)
+	ok = _check(mb.in_check(0) and mb.legal_moves(0).is_empty(), "jaque mate detectado") and ok
+	var ai := ChessAI.new()
+	ai.depth = 2
+	ai.blunder = 0.0
+	ok = _check(ai.choose(mb, 0) == Vector2i(-1, -1), "la IA no encuentra jugadas legales en mate") and ok
 	return ok
 
 
